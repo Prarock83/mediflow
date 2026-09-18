@@ -4,4 +4,7 @@ export default definePrismaConfig({
   skills: {
     agents: ["claude", "cursor", "agents", "devin"],
   },
+  orm: {
+    schema: "prisma/schema.prisma",
+  },
 });
