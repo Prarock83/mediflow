@@ -58,4 +58,8 @@ const startServer = async () => {
   process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 };
 
-startServer();
+export { app };
+
+if (require.main === module) {
+  startServer();
+}

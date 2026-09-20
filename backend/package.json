@@ -7,6 +7,7 @@
     "dev": "nodemon src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
+    "test": "jest",
     "postinstall": "prisma skills sync || exit 0"
   },
   "keywords": [],
@@ -23,8 +24,13 @@
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/jest": "^30.0.0",
     "@types/node": "^22.20.3",
+    "@types/supertest": "^7.2.1",
+    "jest": "^30.5.2",
     "nodemon": "^3.1.14",
+    "supertest": "^7.2.2",
+    "ts-jest": "^29.4.12",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   }
