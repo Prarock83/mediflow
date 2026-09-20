@@ -1,16 +1,14 @@
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
+import { env } from "./config/env";
 import healthRoutes from "./routes/health.routes";
 import { checkDatabaseConnection } from "./lib/db";
 import { prisma } from "./lib/prisma";
 import { notFoundHandler } from "./middleware/not-found.middleware";
 import { errorHandler } from "./middleware/error.middleware";
 
-dotenv.config();
-
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = env.PORT;
 
 app.use(cors());
 app.use(express.json());
