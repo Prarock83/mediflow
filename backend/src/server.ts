@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import { env } from "./config/env";
 import healthRoutes from "./routes/health.routes";
+import authRoutes from "./routes/auth.routes";
 import { checkDatabaseConnection } from "./lib/db";
 import { prisma } from "./lib/prisma";
 import { notFoundHandler } from "./middleware/not-found.middleware";
@@ -14,6 +15,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use("/api/health", healthRoutes);
+app.use("/api/auth", authRoutes);
 
 // Centralized 404 handler for unknown API routes (must be registered after all routes but before errorHandler)
 app.use(notFoundHandler);
