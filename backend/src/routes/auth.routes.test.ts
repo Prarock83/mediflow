@@ -1,7 +1,9 @@
 import request from "supertest";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 import { app } from "../server";
 import { prisma } from "../lib/prisma";
+import { env } from "../config/env";
 
 // Mock Prisma client to isolate unit/integration tests from actual database
 jest.mock("../lib/prisma", () => ({
@@ -157,3 +159,127 @@ describe("Auth Routes - POST /api/auth/register", () => {
     expect(mockUser.create).not.toHaveBeenCalled();
   });
 });
+
+describe("Auth Routes - POST /api/auth/login", () => {
+  const plainPassword = "securePassword123";
+  let hashedPassword: string;
+
+  beforeAll(async () => {
+    hashedPassword = await bcrypt.hash(plainPassword, 10);
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("should successfully log in a user with valid credentials, returning HTTP 200, user info, and JWT token", async () => {
+    mockUser.findUnique.mockResolvedValueOnce({
+      id: "user-uuid-999",
+      email: "doctor.john@mediflow.com",
+      passwordHash: hashedPassword,
+      firstName: "John",
+      lastName: "Watson",
+      role: "DOCTOR",
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as any);
+
+    const response = await request(app).post("/api/auth/login").send({
+      email: "  DOCTOR.JOHN@MEDIFLOW.COM ",
+      password: plainPassword,
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.status).toBe("success");
+    expect(response.body.message).toBe("Login successful");
+    expect(response.body.data.user).toEqual({
+      id: "user-uuid-999",
+      name: "John Watson",
+      email: "doctor.john@mediflow.com",
+      role: "DOCTOR",
+    });
+
+    // JWT token verification
+    expect(response.body.data.token).toBeDefined();
+    const decodedToken = jwt.verify(response.body.data.token, env.JWT_SECRET) as any;
+    expect(decodedToken.id).toBe("user-uuid-999");
+    expect(decodedToken.role).toBe("DOCTOR");
+
+    // Ensure password and passwordHash are NEVER returned in response
+    expect(response.body.data.user.passwordHash).toBeUndefined();
+    expect(response.body.data.user.password).toBeUndefined();
+
+    // Ensure JWT secret is NOT exposed anywhere in response body
+    expect(JSON.stringify(response.body)).not.toContain(env.JWT_SECRET);
+
+    // Verify DB query used normalized email
+    expect(mockUser.findUnique).toHaveBeenCalledWith({
+      where: { email: "doctor.john@mediflow.com" },
+    });
+  });
+
+  it("should return HTTP 401 with generic message when email does not exist", async () => {
+    mockUser.findUnique.mockResolvedValueOnce(null);
+
+    const response = await request(app).post("/api/auth/login").send({
+      email: "nonexistent@mediflow.com",
+      password: "somePassword123",
+    });
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({
+      status: "error",
+      message: "Invalid email or password",
+    });
+  });
+
+  it("should return HTTP 401 with generic message when password is incorrect", async () => {
+    mockUser.findUnique.mockResolvedValueOnce({
+      id: "user-uuid-999",
+      email: "doctor.john@mediflow.com",
+      passwordHash: hashedPassword,
+      firstName: "John",
+      lastName: "Watson",
+      role: "DOCTOR",
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as any);
+
+    const response = await request(app).post("/api/auth/login").send({
+      email: "doctor.john@mediflow.com",
+      password: "wrongPassword123",
+    });
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({
+      status: "error",
+      message: "Invalid email or password",
+    });
+  });
+
+  it("should return HTTP 400 Validation Error for missing or invalid inputs", async () => {
+    // Test invalid email format
+    const resInvalidEmail = await request(app).post("/api/auth/login").send({
+      email: "invalid-email",
+      password: "password123",
+    });
+
+    expect(resInvalidEmail.status).toBe(400);
+    expect(resInvalidEmail.body.status).toBe("error");
+    expect(resInvalidEmail.body.message).toBe("Validation failed");
+
+    // Test missing password
+    const resMissingPassword = await request(app).post("/api/auth/login").send({
+      email: "user@mediflow.com",
+    });
+
+    expect(resMissingPassword.status).toBe(400);
+    expect(resMissingPassword.body.status).toBe("error");
+    expect(resMissingPassword.body.message).toBe("Validation failed");
+
+    expect(mockUser.findUnique).not.toHaveBeenCalled();
+  });
+});
+

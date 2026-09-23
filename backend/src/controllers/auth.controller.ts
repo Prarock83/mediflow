@@ -23,3 +23,22 @@ export const registerHandler = async (
     next(error);
   }
 };
+
+export const loginHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const result = await authService.loginUser(req.body);
+
+    res.status(200).json({
+      status: "success",
+      message: "Login successful",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+

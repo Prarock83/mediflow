@@ -1,8 +1,10 @@
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 import { UserRole } from "@prisma/client";
 import { prisma } from "../lib/prisma";
-import { RegisterInput } from "../schemas/auth.schema";
+import { RegisterInput, LoginInput } from "../schemas/auth.schema";
 import { AppError } from "../middleware/error.middleware";
+import { env } from "../config/env";
 
 export interface SafeUser {
   id: string;
@@ -10,6 +12,16 @@ export interface SafeUser {
   email: string;
   role: UserRole;
   createdAt?: Date;
+}
+
+export interface LoginResult {
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    role: UserRole;
+  };
+  token: string;
 }
 
 export class AuthService {
@@ -59,6 +71,51 @@ export class AuthService {
       createdAt: createdUser.createdAt,
     };
   }
+
+  async loginUser(input: LoginInput): Promise<LoginResult> {
+    const normalizedEmail = input.email.trim().toLowerCase();
+
+    // Find user by normalized email
+    const user = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    if (!user || !user.isActive) {
+      const error: AppError = new Error("Invalid email or password");
+      error.statusCode = 401;
+      error.isOperational = true;
+      throw error;
+    }
+
+    // Compare supplied password against stored password hash
+    const isPasswordValid = await bcrypt.compare(input.password, user.passwordHash);
+    if (!isPasswordValid) {
+      const error: AppError = new Error("Invalid email or password");
+      error.statusCode = 401;
+      error.isOperational = true;
+      throw error;
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: user.id, role: user.role },
+      env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    const fullName = `${user.firstName} ${user.lastName}`.trim();
+
+    return {
+      user: {
+        id: user.id,
+        name: fullName,
+        email: user.email,
+        role: user.role,
+      },
+      token,
+    };
+  }
 }
 
 export const authService = new AuthService();
+
