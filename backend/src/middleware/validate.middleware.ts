@@ -49,7 +49,17 @@ export const validate = (
       return;
     }
 
-    req[target] = result.data;
+    if (target === "query") {
+      try {
+        (req as any).query = result.data;
+      } catch {
+        Object.keys(req.query).forEach((key) => delete (req.query as any)[key]);
+        Object.assign(req.query, result.data);
+      }
+    } else {
+      req[target] = result.data;
+    }
+
     next();
   };
 };
