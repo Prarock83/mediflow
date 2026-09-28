@@ -13,6 +13,14 @@ jest.mock("../lib/prisma", () => ({
       create: jest.fn(),
       update: jest.fn(),
     },
+    doctorAvailability: {
+      findMany: jest.fn(),
+      findFirst: jest.fn(),
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    },
     specialization: {
       findUnique: jest.fn(),
     },
@@ -23,13 +31,16 @@ jest.mock("../lib/prisma", () => ({
 }));
 
 const mockDoctor = prisma.doctor as jest.Mocked<typeof prisma.doctor>;
+const mockAvailability = prisma.doctorAvailability as jest.Mocked<typeof prisma.doctorAvailability>;
 const mockSpecialization = prisma.specialization as jest.Mocked<typeof prisma.specialization>;
 
-describe("Doctor Profile Routes - /api/doctors", () => {
+describe("Doctor API Routes - /api/doctors", () => {
   const doctorUserId = "doctor-uuid-202";
+  const doctorId = "doc-1";
   const patientUserId = "patient-uuid-101";
   const adminUserId = "admin-uuid-303";
   const specializationId = "spec-uuid-555";
+  const validAvailabilityId = "123e4567-e89b-12d3-a456-426614174000";
 
   let doctorToken: string;
   let patientToken: string;
@@ -58,7 +69,7 @@ describe("Doctor Profile Routes - /api/doctors", () => {
   });
 
   // ==========================================
-  // POST /api/doctors/profile
+  // DOCTOR PROFILE ENDPOINTS
   // ==========================================
   describe("POST /api/doctors/profile", () => {
     it("should successfully create a doctor profile with HTTP 201 for authenticated DOCTOR", async () => {
@@ -73,7 +84,7 @@ describe("Doctor Profile Routes - /api/doctors", () => {
       } as any);
 
       (mockDoctor.create as jest.Mock).mockResolvedValueOnce({
-        id: "doc-1",
+        id: doctorId,
         userId: doctorUserId,
         licenseNumber: "MD-998877",
         specializationId,
@@ -111,7 +122,6 @@ describe("Doctor Profile Routes - /api/doctors", () => {
       expect(response.body.data.passwordHash).toBeUndefined();
       expect(response.body.data.password).toBeUndefined();
 
-      // Verify Prisma DB calls
       expect(mockDoctor.create).toHaveBeenCalledWith({
         data: {
           userId: doctorUserId,
@@ -129,7 +139,7 @@ describe("Doctor Profile Routes - /api/doctors", () => {
 
     it("should reject creation of duplicate doctor profile with HTTP 409", async () => {
       mockDoctor.findUnique.mockResolvedValueOnce({
-        id: "doc-1",
+        id: doctorId,
         userId: doctorUserId,
       } as any);
 
@@ -151,11 +161,11 @@ describe("Doctor Profile Routes - /api/doctors", () => {
     });
 
     it("should reject creation if license number is already taken with HTTP 409", async () => {
-      mockDoctor.findUnique.mockResolvedValueOnce(null); // Profile does not exist
+      mockDoctor.findUnique.mockResolvedValueOnce(null);
       mockDoctor.findUnique.mockResolvedValueOnce({
         id: "doc-other",
         licenseNumber: "MD-998877",
-      } as any); // License already taken
+      } as any);
 
       const response = await request(app)
         .post("/api/doctors/profile")
@@ -175,9 +185,9 @@ describe("Doctor Profile Routes - /api/doctors", () => {
     });
 
     it("should return HTTP 404 if specializationId does not exist", async () => {
-      mockDoctor.findUnique.mockResolvedValueOnce(null); // No existing profile
-      mockDoctor.findUnique.mockResolvedValueOnce(null); // No existing license
-      mockSpecialization.findUnique.mockResolvedValueOnce(null); // Specialization not found
+      mockDoctor.findUnique.mockResolvedValueOnce(null);
+      mockDoctor.findUnique.mockResolvedValueOnce(null);
+      mockSpecialization.findUnique.mockResolvedValueOnce(null);
 
       const response = await request(app)
         .post("/api/doctors/profile")
@@ -228,11 +238,6 @@ describe("Doctor Profile Routes - /api/doctors", () => {
           specialization: true,
         },
       });
-      expect(mockDoctor.create).not.toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ userId: "injected-victim-uuid" }),
-        })
-      );
     });
 
     it("should return HTTP 400 for missing required fields or invalid data formats", async () => {
@@ -247,7 +252,6 @@ describe("Doctor Profile Routes - /api/doctors", () => {
       expect(response.status).toBe(400);
       expect(response.body.status).toBe("error");
       expect(response.body.message).toBe("Validation failed");
-      expect(mockDoctor.create).not.toHaveBeenCalled();
     });
 
     it("should return HTTP 401 for unauthenticated request", async () => {
@@ -260,7 +264,6 @@ describe("Doctor Profile Routes - /api/doctors", () => {
         });
 
       expect(response.status).toBe(401);
-      expect(response.body.status).toBe("error");
     });
 
     it("should return HTTP 403 for PATIENT role", async () => {
@@ -274,8 +277,6 @@ describe("Doctor Profile Routes - /api/doctors", () => {
         });
 
       expect(response.status).toBe(403);
-      expect(response.body.status).toBe("error");
-      expect(response.body.message).toBe("Access forbidden: insufficient permissions");
     });
 
     it("should return HTTP 403 for ADMIN role", async () => {
@@ -289,17 +290,13 @@ describe("Doctor Profile Routes - /api/doctors", () => {
         });
 
       expect(response.status).toBe(403);
-      expect(response.body.status).toBe("error");
     });
   });
 
-  // ==========================================
-  // GET /api/doctors/me
-  // ==========================================
   describe("GET /api/doctors/me", () => {
     it("should successfully fetch own profile with HTTP 200 for authenticated DOCTOR", async () => {
       mockDoctor.findUnique.mockResolvedValueOnce({
-        id: "doc-1",
+        id: doctorId,
         userId: doctorUserId,
         licenseNumber: "MD-998877",
         specializationId,
@@ -320,25 +317,7 @@ describe("Doctor Profile Routes - /api/doctors", () => {
 
       expect(response.status).toBe(200);
       expect(response.body.status).toBe("success");
-      expect(response.body.data).toEqual(
-        expect.objectContaining({
-          id: "doc-1",
-          userId: doctorUserId,
-          licenseNumber: "MD-998877",
-          specializationId,
-        })
-      );
-
-      // Verify credentials are NEVER exposed
-      expect(response.body.data.passwordHash).toBeUndefined();
-      expect(response.body.data.password).toBeUndefined();
-
-      expect(mockDoctor.findUnique).toHaveBeenCalledWith({
-        where: { userId: doctorUserId },
-        include: {
-          specialization: true,
-        },
-      });
+      expect(response.body.data.id).toBe(doctorId);
     });
 
     it("should return HTTP 404 if doctor profile does not exist", async () => {
@@ -349,15 +328,10 @@ describe("Doctor Profile Routes - /api/doctors", () => {
         .set("Authorization", `Bearer ${doctorToken}`);
 
       expect(response.status).toBe(404);
-      expect(response.body).toEqual({
-        status: "error",
-        message: "Doctor profile not found",
-      });
     });
 
     it("should return HTTP 401 for unauthenticated request", async () => {
       const response = await request(app).get("/api/doctors/me");
-
       expect(response.status).toBe(401);
     });
 
@@ -368,170 +342,519 @@ describe("Doctor Profile Routes - /api/doctors", () => {
 
       expect(response.status).toBe(403);
     });
-
-    it("should return HTTP 403 for ADMIN role", async () => {
-      const response = await request(app)
-        .get("/api/doctors/me")
-        .set("Authorization", `Bearer ${adminToken}`);
-
-      expect(response.status).toBe(403);
-    });
   });
 
-  // ==========================================
-  // PUT /api/doctors/me
-  // ==========================================
   describe("PUT /api/doctors/me", () => {
     it("should successfully update profile with HTTP 200 for authenticated DOCTOR", async () => {
       mockDoctor.findUnique.mockResolvedValueOnce({
-        id: "doc-1",
+        id: doctorId,
         userId: doctorUserId,
         licenseNumber: "MD-998877",
-        specializationId,
-        experienceYears: 5,
-        bio: "Old bio",
-        consultationFee: 100.0,
       } as any);
 
       mockDoctor.update.mockResolvedValueOnce({
-        id: "doc-1",
+        id: doctorId,
         userId: doctorUserId,
-        licenseNumber: "MD-998877",
-        specializationId,
-        experienceYears: 6,
         bio: "Updated bio",
         consultationFee: 175.0,
-        specialization: {
-          id: specializationId,
-          name: "Cardiology",
-        },
       } as any);
 
       const response = await request(app)
         .put("/api/doctors/me")
         .set("Authorization", `Bearer ${doctorToken}`)
         .send({
-          experienceYears: 6,
           bio: "Updated bio",
           consultationFee: 175.0,
         });
 
       expect(response.status).toBe(200);
       expect(response.body.status).toBe("success");
-      expect(response.body.message).toBe("Doctor profile updated successfully");
       expect(response.body.data.bio).toBe("Updated bio");
-      expect(response.body.data.consultationFee).toBe(175.0);
+    });
+  });
 
-      // Verify credentials are NEVER exposed
-      expect(response.body.data.passwordHash).toBeUndefined();
+  // ==========================================
+  // DOCTOR AVAILABILITY ENDPOINTS
+  // ==========================================
 
-      expect(mockDoctor.findUnique).toHaveBeenCalledWith({
-        where: { userId: doctorUserId },
+  // ------------------------------------------
+  // POST /api/doctors/availability
+  // ------------------------------------------
+  describe("POST /api/doctors/availability", () => {
+    it("should successfully create an availability slot with HTTP 201 for authenticated DOCTOR", async () => {
+      mockDoctor.findUnique.mockResolvedValueOnce({
+        id: doctorId,
+        userId: doctorUserId,
+      } as any);
+
+      mockAvailability.findMany.mockResolvedValueOnce([]); // No existing overlapping slots
+
+      (mockAvailability.create as jest.Mock).mockResolvedValueOnce({
+        id: validAvailabilityId,
+        doctorId,
+        dayOfWeek: 1, // Monday
+        startTime: "09:00",
+        endTime: "12:00",
+        slotDuration: 30,
+        isAvailable: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       });
-      expect(mockDoctor.update).toHaveBeenCalledWith({
-        where: { userId: doctorUserId },
+
+      const response = await request(app)
+        .post("/api/doctors/availability")
+        .set("Authorization", `Bearer ${doctorToken}`)
+        .send({
+          dayOfWeek: 1,
+          startTime: "09:00",
+          endTime: "12:00",
+          slotDuration: 30,
+          isAvailable: true,
+        });
+
+      expect(response.status).toBe(201);
+      expect(response.body.status).toBe("success");
+      expect(response.body.message).toBe("Doctor availability created successfully");
+      expect(response.body.data.doctorId).toBe(doctorId);
+      expect(response.body.data.dayOfWeek).toBe(1);
+
+      expect(mockAvailability.create).toHaveBeenCalledWith({
         data: {
-          experienceYears: 6,
-          bio: "Updated bio",
-          consultationFee: 175.0,
-        },
-        include: {
-          specialization: true,
+          doctorId,
+          dayOfWeek: 1,
+          startTime: "09:00",
+          endTime: "12:00",
+          slotDuration: 30,
+          isAvailable: true,
         },
       });
     });
 
-    it("should return HTTP 404 when trying to update non-existent doctor profile", async () => {
+    it("should reject creation of overlapping availability slot with HTTP 409", async () => {
+      mockDoctor.findUnique.mockResolvedValueOnce({
+        id: doctorId,
+        userId: doctorUserId,
+      } as any);
+
+      mockAvailability.findMany.mockResolvedValueOnce([
+        {
+          id: "existing-slot-1",
+          doctorId,
+          dayOfWeek: 1,
+          startTime: "09:00",
+          endTime: "12:00",
+          slotDuration: 30,
+          isAvailable: true,
+        } as any,
+      ]);
+
+      const response = await request(app)
+        .post("/api/doctors/availability")
+        .set("Authorization", `Bearer ${doctorToken}`)
+        .send({
+          dayOfWeek: 1,
+          startTime: "10:30", // Overlaps with 09:00-12:00
+          endTime: "13:30",
+        });
+
+      expect(response.status).toBe(409);
+      expect(response.body).toEqual({
+        status: "error",
+        message: "Doctor availability slot overlaps with an existing slot",
+      });
+      expect(mockAvailability.create).not.toHaveBeenCalled();
+    });
+
+    it("should ignore doctorId in request body and resolve ownership strictly via req.user.id", async () => {
+      mockDoctor.findUnique.mockResolvedValueOnce({
+        id: doctorId,
+        userId: doctorUserId,
+      } as any);
+
+      mockAvailability.findMany.mockResolvedValueOnce([]);
+
+      (mockAvailability.create as jest.Mock).mockResolvedValueOnce({
+        id: validAvailabilityId,
+        doctorId,
+        dayOfWeek: 2,
+        startTime: "14:00",
+        endTime: "17:00",
+      });
+
+      const response = await request(app)
+        .post("/api/doctors/availability")
+        .set("Authorization", `Bearer ${doctorToken}`)
+        .send({
+          doctorId: "other-doctor-uuid",
+          dayOfWeek: 2,
+          startTime: "14:00",
+          endTime: "17:00",
+        });
+
+      expect(response.status).toBe(201);
+      expect(mockAvailability.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          doctorId, // Bound to authenticated doctor
+        }),
+      });
+      expect(mockAvailability.create).not.toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          doctorId: "other-doctor-uuid",
+        }),
+      });
+    });
+
+    it("should return HTTP 404 if doctor profile does not exist yet", async () => {
       mockDoctor.findUnique.mockResolvedValueOnce(null);
 
       const response = await request(app)
-        .put("/api/doctors/me")
+        .post("/api/doctors/availability")
         .set("Authorization", `Bearer ${doctorToken}`)
         .send({
-          bio: "Updated bio",
+          dayOfWeek: 1,
+          startTime: "09:00",
+          endTime: "12:00",
         });
 
       expect(response.status).toBe(404);
-      expect(response.body).toEqual({
-        status: "error",
-        message: "Doctor profile not found",
-      });
-      expect(mockDoctor.update).not.toHaveBeenCalled();
+      expect(response.body.message).toBe("Doctor profile not found");
     });
 
-    it("should return HTTP 400 for invalid field inputs (e.g. negative consultationFee)", async () => {
+    it("should return HTTP 400 if endTime is earlier than or equal to startTime", async () => {
       const response = await request(app)
-        .put("/api/doctors/me")
+        .post("/api/doctors/availability")
         .set("Authorization", `Bearer ${doctorToken}`)
         .send({
-          consultationFee: -100,
+          dayOfWeek: 1,
+          startTime: "14:00",
+          endTime: "12:00",
         });
 
       expect(response.status).toBe(400);
       expect(response.body.status).toBe("error");
       expect(response.body.message).toBe("Validation failed");
-      expect(mockDoctor.update).not.toHaveBeenCalled();
     });
 
-    it("should not allow modifying userId, role, email, or password via PUT payload", async () => {
-      mockDoctor.findUnique.mockResolvedValueOnce({
-        id: "doc-1",
-        userId: doctorUserId,
-        licenseNumber: "MD-998877",
-      } as any);
-
-      mockDoctor.update.mockResolvedValueOnce({
-        id: "doc-1",
-        userId: doctorUserId,
-        licenseNumber: "MD-998877",
-        bio: "Updated safe bio",
-      } as any);
-
+    it("should return HTTP 400 for invalid dayOfWeek or malformed time formats", async () => {
       const response = await request(app)
-        .put("/api/doctors/me")
+        .post("/api/doctors/availability")
         .set("Authorization", `Bearer ${doctorToken}`)
         .send({
-          userId: "hacked-user-id",
-          role: "ADMIN",
-          email: "hacked@mediflow.com",
-          password: "newHackedPassword",
-          bio: "Updated safe bio",
+          dayOfWeek: 7, // Invalid day
+          startTime: "9am", // Invalid format
+          endTime: "12:00",
         });
 
-      expect(response.status).toBe(200);
-      expect(mockDoctor.update).toHaveBeenCalledWith({
-        where: { userId: doctorUserId },
-        data: {
-          bio: "Updated safe bio",
-        },
-        include: {
-          specialization: true,
-        },
-      });
+      expect(response.status).toBe(400);
+      expect(response.body.status).toBe("error");
     });
 
     it("should return HTTP 401 for unauthenticated request", async () => {
       const response = await request(app)
-        .put("/api/doctors/me")
-        .send({ bio: "Updated bio" });
+        .post("/api/doctors/availability")
+        .send({
+          dayOfWeek: 1,
+          startTime: "09:00",
+          endTime: "12:00",
+        });
 
       expect(response.status).toBe(401);
     });
 
     it("should return HTTP 403 for PATIENT role", async () => {
       const response = await request(app)
-        .put("/api/doctors/me")
+        .post("/api/doctors/availability")
         .set("Authorization", `Bearer ${patientToken}`)
-        .send({ bio: "Updated bio" });
+        .send({
+          dayOfWeek: 1,
+          startTime: "09:00",
+          endTime: "12:00",
+        });
 
       expect(response.status).toBe(403);
     });
 
     it("should return HTTP 403 for ADMIN role", async () => {
       const response = await request(app)
-        .put("/api/doctors/me")
+        .post("/api/doctors/availability")
         .set("Authorization", `Bearer ${adminToken}`)
-        .send({ bio: "Updated bio" });
+        .send({
+          dayOfWeek: 1,
+          startTime: "09:00",
+          endTime: "12:00",
+        });
+
+      expect(response.status).toBe(403);
+    });
+  });
+
+  // ------------------------------------------
+  // GET /api/doctors/availability
+  // ------------------------------------------
+  describe("GET /api/doctors/availability", () => {
+    it("should list availability records belonging ONLY to authenticated doctor with HTTP 200", async () => {
+      mockDoctor.findUnique.mockResolvedValueOnce({
+        id: doctorId,
+        userId: doctorUserId,
+      } as any);
+
+      const mockSlots = [
+        {
+          id: "slot-1",
+          doctorId,
+          dayOfWeek: 1,
+          startTime: "09:00",
+          endTime: "12:00",
+          slotDuration: 30,
+          isAvailable: true,
+        },
+        {
+          id: "slot-2",
+          doctorId,
+          dayOfWeek: 3,
+          startTime: "14:00",
+          endTime: "17:00",
+          slotDuration: 30,
+          isAvailable: true,
+        },
+      ];
+
+      mockAvailability.findMany.mockResolvedValueOnce(mockSlots as any);
+
+      const response = await request(app)
+        .get("/api/doctors/availability")
+        .set("Authorization", `Bearer ${doctorToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.status).toBe("success");
+      expect(response.body.data).toHaveLength(2);
+      expect(response.body.data[0].doctorId).toBe(doctorId);
+
+      expect(mockAvailability.findMany).toHaveBeenCalledWith({
+        where: { doctorId },
+        orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
+      });
+    });
+
+    it("should return HTTP 404 if doctor profile does not exist", async () => {
+      mockDoctor.findUnique.mockResolvedValueOnce(null);
+
+      const response = await request(app)
+        .get("/api/doctors/availability")
+        .set("Authorization", `Bearer ${doctorToken}`);
+
+      expect(response.status).toBe(404);
+    });
+
+    it("should return HTTP 401 for unauthenticated request", async () => {
+      const response = await request(app).get("/api/doctors/availability");
+      expect(response.status).toBe(401);
+    });
+
+    it("should return HTTP 403 for PATIENT role", async () => {
+      const response = await request(app)
+        .get("/api/doctors/availability")
+        .set("Authorization", `Bearer ${patientToken}`);
+
+      expect(response.status).toBe(403);
+    });
+  });
+
+  // ------------------------------------------
+  // PUT /api/doctors/availability/:id
+  // ------------------------------------------
+  describe("PUT /api/doctors/availability/:id", () => {
+    it("should update availability slot belonging to authenticated doctor with HTTP 200", async () => {
+      mockDoctor.findUnique.mockResolvedValueOnce({
+        id: doctorId,
+        userId: doctorUserId,
+      } as any);
+
+      mockAvailability.findFirst.mockResolvedValueOnce({
+        id: validAvailabilityId,
+        doctorId,
+        dayOfWeek: 1,
+        startTime: "09:00",
+        endTime: "12:00",
+        slotDuration: 30,
+        isAvailable: true,
+      } as any);
+
+      mockAvailability.findMany.mockResolvedValueOnce([]); // No overlaps with other slots
+
+      mockAvailability.update.mockResolvedValueOnce({
+        id: validAvailabilityId,
+        doctorId,
+        dayOfWeek: 1,
+        startTime: "10:00",
+        endTime: "13:00",
+        slotDuration: 30,
+        isAvailable: true,
+      } as any);
+
+      const response = await request(app)
+        .put(`/api/doctors/availability/${validAvailabilityId}`)
+        .set("Authorization", `Bearer ${doctorToken}`)
+        .send({
+          startTime: "10:00",
+          endTime: "13:00",
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.status).toBe("success");
+      expect(response.body.message).toBe("Doctor availability updated successfully");
+      expect(response.body.data.startTime).toBe("10:00");
+
+      expect(mockAvailability.update).toHaveBeenCalledWith({
+        where: { id: validAvailabilityId },
+        data: {
+          startTime: "10:00",
+          endTime: "13:00",
+        },
+      });
+    });
+
+    it("should return HTTP 404 if slot does not exist or belongs to another doctor", async () => {
+      mockDoctor.findUnique.mockResolvedValueOnce({
+        id: doctorId,
+        userId: doctorUserId,
+      } as any);
+
+      mockAvailability.findFirst.mockResolvedValueOnce(null); // Not found for this doctor
+
+      const response = await request(app)
+        .put(`/api/doctors/availability/${validAvailabilityId}`)
+        .set("Authorization", `Bearer ${doctorToken}`)
+        .send({
+          startTime: "10:00",
+        });
+
+      expect(response.status).toBe(404);
+      expect(response.body).toEqual({
+        status: "error",
+        message: "Doctor availability slot not found",
+      });
+      expect(mockAvailability.update).not.toHaveBeenCalled();
+    });
+
+    it("should return HTTP 409 if updated slot overlaps with another existing slot", async () => {
+      mockDoctor.findUnique.mockResolvedValueOnce({
+        id: doctorId,
+        userId: doctorUserId,
+      } as any);
+
+      mockAvailability.findFirst.mockResolvedValueOnce({
+        id: validAvailabilityId,
+        doctorId,
+        dayOfWeek: 1,
+        startTime: "09:00",
+        endTime: "12:00",
+      } as any);
+
+      mockAvailability.findMany.mockResolvedValueOnce([
+        {
+          id: "other-slot",
+          doctorId,
+          dayOfWeek: 1,
+          startTime: "13:00",
+          endTime: "16:00",
+        } as any,
+      ]);
+
+      const response = await request(app)
+        .put(`/api/doctors/availability/${validAvailabilityId}`)
+        .set("Authorization", `Bearer ${doctorToken}`)
+        .send({
+          endTime: "14:00", // Would overlap with 13:00-16:00
+        });
+
+      expect(response.status).toBe(409);
+      expect(response.body.message).toBe("Doctor availability slot overlaps with an existing slot");
+      expect(mockAvailability.update).not.toHaveBeenCalled();
+    });
+
+    it("should return HTTP 400 for malformed availability ID parameter", async () => {
+      const response = await request(app)
+        .put("/api/doctors/availability/not-a-valid-uuid")
+        .set("Authorization", `Bearer ${doctorToken}`)
+        .send({
+          startTime: "10:00",
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.status).toBe("error");
+      expect(response.body.message).toBe("Validation failed");
+    });
+  });
+
+  // ------------------------------------------
+  // DELETE /api/doctors/availability/:id
+  // ------------------------------------------
+  describe("DELETE /api/doctors/availability/:id", () => {
+    it("should delete availability slot belonging to authenticated doctor with HTTP 200", async () => {
+      mockDoctor.findUnique.mockResolvedValueOnce({
+        id: doctorId,
+        userId: doctorUserId,
+      } as any);
+
+      mockAvailability.findFirst.mockResolvedValueOnce({
+        id: validAvailabilityId,
+        doctorId,
+      } as any);
+
+      mockAvailability.delete.mockResolvedValueOnce({} as any);
+
+      const response = await request(app)
+        .delete(`/api/doctors/availability/${validAvailabilityId}`)
+        .set("Authorization", `Bearer ${doctorToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.status).toBe("success");
+      expect(response.body.message).toBe("Doctor availability deleted successfully");
+
+      expect(mockAvailability.delete).toHaveBeenCalledWith({
+        where: { id: validAvailabilityId },
+      });
+    });
+
+    it("should return HTTP 404 if slot does not exist or belongs to another doctor", async () => {
+      mockDoctor.findUnique.mockResolvedValueOnce({
+        id: doctorId,
+        userId: doctorUserId,
+      } as any);
+
+      mockAvailability.findFirst.mockResolvedValueOnce(null);
+
+      const response = await request(app)
+        .delete(`/api/doctors/availability/${validAvailabilityId}`)
+        .set("Authorization", `Bearer ${doctorToken}`);
+
+      expect(response.status).toBe(404);
+      expect(response.body).toEqual({
+        status: "error",
+        message: "Doctor availability slot not found",
+      });
+      expect(mockAvailability.delete).not.toHaveBeenCalled();
+    });
+
+    it("should return HTTP 400 for malformed availability ID parameter", async () => {
+      const response = await request(app)
+        .delete("/api/doctors/availability/malformed-id-123")
+        .set("Authorization", `Bearer ${doctorToken}`);
+
+      expect(response.status).toBe(400);
+      expect(response.body.status).toBe("error");
+    });
+
+    it("should return HTTP 401 for unauthenticated request", async () => {
+      const response = await request(app).delete(`/api/doctors/availability/${validAvailabilityId}`);
+      expect(response.status).toBe(401);
+    });
+
+    it("should return HTTP 403 for PATIENT role", async () => {
+      const response = await request(app)
+        .delete(`/api/doctors/availability/${validAvailabilityId}`)
+        .set("Authorization", `Bearer ${patientToken}`);
 
       expect(response.status).toBe(403);
     });

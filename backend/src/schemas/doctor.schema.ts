@@ -54,3 +54,72 @@ export const updateDoctorProfileSchema = z.object({
 });
 
 export type UpdateDoctorInput = z.infer<typeof updateDoctorProfileSchema>;
+
+const timeRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/;
+
+export const createDoctorAvailabilitySchema = z
+  .object({
+    dayOfWeek: z
+      .number({ message: "dayOfWeek must be a number" })
+      .int("dayOfWeek must be an integer")
+      .min(0, "dayOfWeek must be between 0 (Sunday) and 6 (Saturday)")
+      .max(6, "dayOfWeek must be between 0 (Sunday) and 6 (Saturday)"),
+    startTime: z
+      .string()
+      .trim()
+      .regex(timeRegex, "startTime must be in HH:mm 24-hour format"),
+    endTime: z
+      .string()
+      .trim()
+      .regex(timeRegex, "endTime must be in HH:mm 24-hour format"),
+    slotDuration: z
+      .number({ message: "slotDuration must be a number" })
+      .int("slotDuration must be an integer")
+      .positive("slotDuration must be positive")
+      .optional(),
+    isAvailable: z
+      .boolean({ message: "isAvailable must be a boolean" })
+      .optional(),
+  })
+  .refine((data) => data.startTime < data.endTime, {
+    message: "startTime must be earlier than endTime",
+    path: ["endTime"],
+  });
+
+export type CreateDoctorAvailabilityInput = z.infer<typeof createDoctorAvailabilitySchema>;
+
+export const updateDoctorAvailabilitySchema = z
+  .object({
+    dayOfWeek: z
+      .number({ message: "dayOfWeek must be a number" })
+      .int("dayOfWeek must be an integer")
+      .min(0, "dayOfWeek must be between 0 (Sunday) and 6 (Saturday)")
+      .max(6, "dayOfWeek must be between 0 (Sunday) and 6 (Saturday)")
+      .optional(),
+    startTime: z
+      .string()
+      .trim()
+      .regex(timeRegex, "startTime must be in HH:mm 24-hour format")
+      .optional(),
+    endTime: z
+      .string()
+      .trim()
+      .regex(timeRegex, "endTime must be in HH:mm 24-hour format")
+      .optional(),
+    slotDuration: z
+      .number({ message: "slotDuration must be a number" })
+      .int("slotDuration must be an integer")
+      .positive("slotDuration must be positive")
+      .optional(),
+    isAvailable: z
+      .boolean({ message: "isAvailable must be a boolean" })
+      .optional(),
+  });
+
+export type UpdateDoctorAvailabilityInput = z.infer<typeof updateDoctorAvailabilitySchema>;
+
+export const availabilityIdParamSchema = z.object({
+  id: z.string().uuid("Invalid availability ID format"),
+});
+
+export type AvailabilityIdParam = z.infer<typeof availabilityIdParamSchema>;
