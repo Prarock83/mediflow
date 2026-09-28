@@ -10,6 +10,7 @@ import doctorAppointmentRoutes from "./routes/doctor-appointment.routes";
 import consultationRoutes from "./routes/consultation.routes";
 import medicalRecordRoutes from "./routes/medical-record.routes";
 import prescriptionRoutes from "./routes/prescription.routes";
+import documentRoutes from "./routes/document.routes";
 import { checkDatabaseConnection } from "./lib/db";
 import { prisma } from "./lib/prisma";
 import { notFoundHandler } from "./middleware/not-found.middleware";
@@ -30,6 +31,7 @@ app.use("/api/appointments", appointmentRoutes);
 app.use("/api/consultations", consultationRoutes);
 app.use("/api/medical-records", medicalRecordRoutes);
 app.use("/api/prescriptions", prescriptionRoutes);
+app.use("/api/documents", documentRoutes);
 
 // Centralized 404 handler for unknown API routes (must be registered after all routes but before errorHandler)
 app.use(notFoundHandler);
