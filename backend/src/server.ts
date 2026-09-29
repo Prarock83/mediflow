@@ -12,6 +12,7 @@ import medicalRecordRoutes from "./routes/medical-record.routes";
 import prescriptionRoutes from "./routes/prescription.routes";
 import documentRoutes from "./routes/document.routes";
 import notificationRoutes from "./routes/notification.routes";
+import adminUserRoutes from "./routes/admin-user.routes";
 import { checkDatabaseConnection } from "./lib/db";
 import { prisma } from "./lib/prisma";
 import { notFoundHandler } from "./middleware/not-found.middleware";
@@ -34,6 +35,7 @@ app.use("/api/medical-records", medicalRecordRoutes);
 app.use("/api/prescriptions", prescriptionRoutes);
 app.use("/api/documents", documentRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/admin/users", adminUserRoutes);
 
 // Centralized 404 handler for unknown API routes (must be registered after all routes but before errorHandler)
 app.use(notFoundHandler);
