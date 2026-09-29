@@ -2,6 +2,7 @@ import { Prescription, UserRole } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { AppError } from "../middleware/error.middleware";
 import { CreatePrescriptionInput } from "../schemas/prescription.schema";
+import { notificationService } from "./notification.service";
 
 export class PrescriptionService {
   async createPrescription(
@@ -91,6 +92,14 @@ export class PrescriptionService {
         },
       },
     });
+
+    if (prescription.patient?.userId) {
+      await notificationService.createNotification({
+        userId: prescription.patient.userId,
+        title: "New Prescription Issued",
+        message: "A new prescription has been issued for your consultation.",
+      });
+    }
 
     return prescription;
   }

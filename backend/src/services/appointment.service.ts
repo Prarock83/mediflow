@@ -2,6 +2,7 @@ import { Appointment, AppointmentStatus } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { AppError } from "../middleware/error.middleware";
 import { CreateAppointmentInput } from "../schemas/appointment.schema";
+import { notificationService } from "./notification.service";
 
 export class AppointmentService {
   async createAppointment(
@@ -130,6 +131,14 @@ export class AppointmentService {
         },
       },
     });
+
+    if (doctor.userId) {
+      await notificationService.createNotification({
+        userId: doctor.userId,
+        title: "New Appointment Request",
+        message: `New appointment requested for ${input.appointmentDate.toISOString()}`,
+      });
+    }
 
     return appointment;
   }

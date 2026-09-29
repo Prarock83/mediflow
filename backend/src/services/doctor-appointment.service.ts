@@ -5,6 +5,7 @@ import {
   UpdateAppointmentStatusInput,
   DoctorAppointmentQueryInput,
 } from "../schemas/doctor-appointment.schema";
+import { notificationService } from "./notification.service";
 
 const ALLOWED_STATUS_TRANSITIONS: Record<
   AppointmentStatus,
@@ -203,6 +204,14 @@ export class DoctorAppointmentService {
         },
       },
     });
+
+    if (updatedAppointment.patient?.userId) {
+      await notificationService.createNotification({
+        userId: updatedAppointment.patient.userId,
+        title: `Appointment ${targetStatus}`,
+        message: `Your appointment status has been updated to ${targetStatus}`,
+      });
+    }
 
     return updatedAppointment;
   }
