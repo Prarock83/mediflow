@@ -2,6 +2,7 @@ import { Consultation, AppointmentStatus, UserRole } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { AppError } from "../middleware/error.middleware";
 import { CreateConsultationInput } from "../schemas/consultation.schema";
+import { auditLogService } from "./audit-log.service";
 
 export class ConsultationService {
   async createConsultation(
@@ -96,6 +97,14 @@ export class ConsultationService {
           },
         },
       },
+    });
+
+    await auditLogService.createAuditLog({
+      userId,
+      action: "CREATE_CONSULTATION",
+      entity: "Consultation",
+      entityId: consultation.id,
+      details: `Consultation created for appointment ${appointment.id}`,
     });
 
     return consultation;

@@ -6,6 +6,7 @@ import {
   DoctorAppointmentQueryInput,
 } from "../schemas/doctor-appointment.schema";
 import { notificationService } from "./notification.service";
+import { auditLogService } from "./audit-log.service";
 
 const ALLOWED_STATUS_TRANSITIONS: Record<
   AppointmentStatus,
@@ -203,6 +204,14 @@ export class DoctorAppointmentService {
           },
         },
       },
+    });
+
+    await auditLogService.createAuditLog({
+      userId: userId,
+      action: "UPDATE_APPOINTMENT_STATUS_DOCTOR",
+      entity: "Appointment",
+      entityId: appointmentId,
+      details: `Appointment status updated from ${currentStatus} to ${targetStatus}`,
     });
 
     if (updatedAppointment.patient?.userId) {

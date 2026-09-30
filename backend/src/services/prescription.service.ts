@@ -3,6 +3,7 @@ import { prisma } from "../lib/prisma";
 import { AppError } from "../middleware/error.middleware";
 import { CreatePrescriptionInput } from "../schemas/prescription.schema";
 import { notificationService } from "./notification.service";
+import { auditLogService } from "./audit-log.service";
 
 export class PrescriptionService {
   async createPrescription(
@@ -91,6 +92,14 @@ export class PrescriptionService {
           },
         },
       },
+    });
+
+    await auditLogService.createAuditLog({
+      userId: userId,
+      action: "CREATE_PRESCRIPTION",
+      entity: "Prescription",
+      entityId: prescription.id,
+      details: `Prescription created for consultation ${consultation.id}`,
     });
 
     if (prescription.patient?.userId) {

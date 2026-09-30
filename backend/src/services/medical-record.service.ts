@@ -5,6 +5,7 @@ import {
   CreateMedicalRecordInput,
   UpdateMedicalRecordInput,
 } from "../schemas/medical-record.schema";
+import { auditLogService } from "./audit-log.service";
 
 export class MedicalRecordService {
   async createMedicalRecord(
@@ -83,6 +84,14 @@ export class MedicalRecordService {
         },
         documents: true,
       },
+    });
+
+    await auditLogService.createAuditLog({
+      userId,
+      action: "CREATE_MEDICAL_RECORD",
+      entity: "MedicalRecord",
+      entityId: medicalRecord.id,
+      details: `Medical record '${medicalRecord.title}' created`,
     });
 
     return medicalRecord;
@@ -298,6 +307,14 @@ export class MedicalRecordService {
         },
         documents: true,
       },
+    });
+
+    await auditLogService.createAuditLog({
+      userId,
+      action: "UPDATE_MEDICAL_RECORD",
+      entity: "MedicalRecord",
+      entityId: updatedRecord.id,
+      details: `Medical record '${updatedRecord.title}' updated`,
     });
 
     return updatedRecord;

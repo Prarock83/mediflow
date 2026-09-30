@@ -6,6 +6,7 @@ import {
   UpdateAppointmentStatusInput,
 } from "../schemas/admin-appointment.schema";
 import { notificationService } from "./notification.service";
+import { auditLogService } from "./audit-log.service";
 
 const ALLOWED_STATUS_TRANSITIONS: Record<
   AppointmentStatus,
@@ -150,7 +151,8 @@ export class AdminAppointmentService {
    */
   async updateAppointmentStatus(
     id: string,
-    input: UpdateAppointmentStatusInput
+    input: UpdateAppointmentStatusInput,
+    adminUserId?: string
   ): Promise<Appointment> {
     const existingAppointment = await prisma.appointment.findUnique({
       where: { id },
@@ -187,6 +189,14 @@ export class AdminAppointmentService {
         status: targetStatus,
       },
       include: APPOINTMENT_INCLUDE_FIELDS,
+    });
+
+    await auditLogService.createAuditLog({
+      userId: adminUserId,
+      action: "UPDATE_APPOINTMENT_STATUS_ADMIN",
+      entity: "Appointment",
+      entityId: id,
+      details: `Appointment status updated from ${currentStatus} to ${targetStatus}`,
     });
 
     if (updatedAppointment.patient?.userId) {

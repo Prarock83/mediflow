@@ -57,9 +57,11 @@ export const updateAppointmentStatusHandler = async (
 ): Promise<void> => {
   try {
     const id = req.params.id as string;
+    const adminUserId = req.user?.id;
     const updatedAppointment = await adminAppointmentService.updateAppointmentStatus(
       id,
-      req.body
+      req.body,
+      adminUserId
     );
 
     res.status(200).json({

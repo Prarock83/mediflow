@@ -57,9 +57,11 @@ export const updateDoctorStatusHandler = async (
 ): Promise<void> => {
   try {
     const id = req.params.id as string;
+    const adminUserId = req.user?.id;
     const updatedDoctor = await adminDoctorService.updateDoctorStatus(
       id,
-      req.body
+      req.body,
+      adminUserId
     );
 
     res.status(200).json({

@@ -4,6 +4,7 @@ import {
   AdminDoctorQueryInput,
   UpdateDoctorStatusInput,
 } from "../schemas/admin-doctor.schema";
+import { auditLogService } from "./audit-log.service";
 
 const DOCTOR_USER_SELECT = {
   id: true,
@@ -102,7 +103,11 @@ export class AdminDoctorService {
   /**
    * Update associated User.isActive status for a doctor by Doctor UUID.
    */
-  async updateDoctorStatus(id: string, input: UpdateDoctorStatusInput) {
+  async updateDoctorStatus(
+    id: string,
+    input: UpdateDoctorStatusInput,
+    adminUserId?: string
+  ) {
     const doctor = await prisma.doctor.findUnique({
       where: { id },
     });
@@ -117,6 +122,14 @@ export class AdminDoctorService {
     await prisma.user.update({
       where: { id: doctor.userId },
       data: { isActive: input.isActive },
+    });
+
+    await auditLogService.createAuditLog({
+      userId: adminUserId,
+      action: "UPDATE_DOCTOR_STATUS",
+      entity: "Doctor",
+      entityId: id,
+      details: `Doctor status updated to ${input.isActive ? "active" : "inactive"}`,
     });
 
     const updatedDoctor = await prisma.doctor.findUnique({
