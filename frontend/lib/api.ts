@@ -300,6 +300,65 @@ export async function fetchNotifications(
   }
 }
 
+export async function fetchPatientNotifications(
+  token?: string
+): Promise<NotificationItem[]> {
+  const response = await fetch(`${API_BASE_URL}/notifications/my`, {
+    headers: getAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    throw new ApiError(
+      `Failed to fetch notifications: ${response.status}`,
+      response.status
+    );
+  }
+
+  const data = await response.json();
+  return data.data || [];
+}
+
+export async function markNotificationAsRead(
+  id: string,
+  token?: string
+): Promise<NotificationItem> {
+  const response = await fetch(`${API_BASE_URL}/notifications/${id}/read`, {
+    method: "PATCH",
+    headers: getAuthHeaders(token),
+  });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to mark notification as read: ${response.status}`,
+      response.status
+    );
+  }
+
+  return data.data;
+}
+
+export async function deleteNotification(
+  id: string,
+  token?: string
+): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/notifications/${id}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(token),
+  });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to delete notification: ${response.status}`,
+      response.status
+    );
+  }
+}
+
+
 export interface MedicalRecordDocument {
   id: string;
   medicalRecordId: string;
