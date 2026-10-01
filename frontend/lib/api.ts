@@ -300,4 +300,78 @@ export async function fetchNotifications(
   }
 }
 
+export interface MedicalRecordDocument {
+  id: string;
+  medicalRecordId: string;
+  fileName: string;
+  fileUrl: string;
+  fileType: string;
+  fileSize: number;
+  uploadedAt: string;
+}
+
+export interface MedicalRecordPatientUser {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber?: string;
+}
+
+export interface MedicalRecordPatient {
+  id: string;
+  userId: string;
+  user?: MedicalRecordPatientUser;
+}
+
+export interface MedicalRecord {
+  id: string;
+  patientId: string;
+  title: string;
+  description?: string | null;
+  recordDate: string;
+  createdAt: string;
+  updatedAt: string;
+  patient?: MedicalRecordPatient;
+  documents?: MedicalRecordDocument[];
+}
+
+export async function fetchPatientMedicalRecords(
+  token?: string
+): Promise<MedicalRecord[]> {
+  const response = await fetch(`${API_BASE_URL}/medical-records/my`, {
+    headers: getAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    throw new ApiError(
+      `Failed to fetch medical records: ${response.status}`,
+      response.status
+    );
+  }
+
+  const data = await response.json();
+  return data.data || [];
+}
+
+export async function fetchPatientMedicalRecordById(
+  id: string,
+  token?: string
+): Promise<MedicalRecord> {
+  const response = await fetch(`${API_BASE_URL}/medical-records/${id}`, {
+    headers: getAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    throw new ApiError(
+      `Failed to fetch medical record: ${response.status}`,
+      response.status
+    );
+  }
+
+  const data = await response.json();
+  return data.data;
+}
+
+
 
