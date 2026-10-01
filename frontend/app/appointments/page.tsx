@@ -670,13 +670,13 @@ function AppointmentBookingContent() {
                   </div>
 
                   <div className="flex items-center justify-end">
-                    <button
-                      type="button"
+                    <Link
+                      href={`/appointments/${nextAppointment.id}`}
                       className="bg-slate-100 hover:bg-slate-200/80 text-teal-800 font-label-md text-label-md font-semibold px-4 py-2 rounded-xl transition flex items-center gap-1"
                     >
                       <span>View Details</span>
                       <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-                    </button>
+                    </Link>
                   </div>
                 </div>
               </div>
@@ -885,12 +885,12 @@ function AppointmentBookingContent() {
                       </div>
 
                       <div className="flex items-center justify-end">
-                        <button
-                          type="button"
+                        <Link
+                          href={`/appointments/${app.id}`}
                           className="bg-slate-100 hover:bg-slate-200/80 text-slate-800 font-label-md text-label-md font-medium px-4 py-2 rounded-xl transition"
                         >
                           View Details
-                        </button>
+                        </Link>
                       </div>
                     </div>
                   );

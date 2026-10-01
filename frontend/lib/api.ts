@@ -205,6 +205,14 @@ export async function fetchPatientAppointments(
   return data.data || [];
 }
 
+export async function fetchPatientAppointmentById(
+  id: string,
+  token?: string
+): Promise<Appointment | null> {
+  const appointments = await fetchPatientAppointments(token);
+  return appointments.find((app) => app.id === id) || null;
+}
+
 export class ApiError extends Error {
   status: number;
   constructor(message: string, status: number) {
