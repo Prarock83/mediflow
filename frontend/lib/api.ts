@@ -190,19 +190,19 @@ export async function fetchRecommendedDoctors(
 export async function fetchPatientAppointments(
   token?: string
 ): Promise<Appointment[]> {
-  try {
-    const response = await fetch(`${API_BASE_URL}/appointments/my`, {
-      headers: getAuthHeaders(token),
-    });
-    if (!response.ok) {
-      throw new Error(`Failed to fetch appointments: ${response.status}`);
-    }
-    const data = await response.json();
-    return data.data || [];
-  } catch (error) {
-    console.warn("API fetchPatientAppointments failed, using fallback:", error);
-    return [];
+  const response = await fetch(`${API_BASE_URL}/appointments/my`, {
+    headers: getAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    throw new ApiError(
+      `Failed to fetch appointments: ${response.status}`,
+      response.status
+    );
   }
+
+  const data = await response.json();
+  return data.data || [];
 }
 
 export class ApiError extends Error {
