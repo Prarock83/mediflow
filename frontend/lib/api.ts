@@ -205,6 +205,75 @@ export async function fetchPatientAppointments(
   }
 }
 
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
+export interface PatientProfileData {
+  id: string;
+  userId: string;
+  dateOfBirth?: string;
+  gender?: string;
+  bloodGroup?: string;
+  address?: string;
+  emergencyContact?: string;
+  user?: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+  };
+}
+
+export interface CreateAppointmentPayload {
+  doctorId: string;
+  appointmentDate: string;
+  startTime: string;
+  endTime: string;
+  reason?: string;
+}
+
+export async function fetchPatientProfile(
+  token?: string
+): Promise<PatientProfileData> {
+  const response = await fetch(`${API_BASE_URL}/patients/me`, {
+    headers: getAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    throw new ApiError(`Failed to fetch patient profile: ${response.status}`, response.status);
+  }
+
+  const data = await response.json();
+  return data.data;
+}
+
+export async function createAppointment(
+  payload: CreateAppointmentPayload,
+  token?: string
+): Promise<Appointment> {
+  const response = await fetch(`${API_BASE_URL}/appointments`, {
+    method: "POST",
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to create appointment: ${response.status}`,
+      response.status
+    );
+  }
+
+  return data.data;
+}
+
 export async function fetchNotifications(
   token?: string
 ): Promise<NotificationItem[]> {
@@ -222,4 +291,5 @@ export async function fetchNotifications(
     return [];
   }
 }
+
 

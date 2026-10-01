@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import PatientLayout from "@/components/patient/PatientLayout";
 import { DoctorProfile, fetchDoctorById } from "@/lib/api";
@@ -33,6 +33,7 @@ function formatFullDateDisplay(dateStr: string): string {
 
 function AppointmentDetailsContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const doctorId = searchParams.get("doctorId");
   const date = searchParams.get("date") || "";
   const startTime = searchParams.get("startTime") || "";
@@ -41,6 +42,20 @@ function AppointmentDetailsContent() {
   const [doctor, setDoctor] = useState<DoctorProfile | null>(null);
   const [isLoadingDoctor, setIsLoadingDoctor] = useState<boolean>(!!doctorId);
   const [reason, setReason] = useState<string>("");
+
+  const handleProceedToConfirmation = () => {
+    if (!doctorId || !date || !startTime || !endTime) return;
+    const query = new URLSearchParams({
+      doctorId,
+      date,
+      startTime,
+      endTime,
+    });
+    if (reason.trim()) {
+      query.set("reason", reason.trim());
+    }
+    router.push(`/appointments/confirm?${query.toString()}`);
+  };
 
   useEffect(() => {
     if (doctorId) {
@@ -133,9 +148,11 @@ function AppointmentDetailsContent() {
           </Link>
           <button
             type="button"
-            className="px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-label-md text-label-md font-semibold rounded-xl shadow-sm transition-all"
+            onClick={handleProceedToConfirmation}
+            className="px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-label-md text-label-md font-semibold rounded-xl shadow-sm transition-all flex items-center gap-1.5"
           >
-            Proceed to Confirmation
+            <span>Proceed to Confirmation</span>
+            <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
           </button>
         </div>
       </div>
