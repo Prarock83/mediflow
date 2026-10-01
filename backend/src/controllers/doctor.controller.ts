@@ -136,3 +136,71 @@ export const deleteDoctorAvailabilityHandler = async (
     next(error);
   }
 };
+
+/**
+ * Handler for GET /api/doctors
+ * PATIENT-only discovery endpoint returning paginated list of active doctors.
+ */
+export const getPublicDoctorsHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const query = req.query as any;
+    const result = await doctorService.getPublicDoctors(query);
+
+    res.status(200).json({
+      status: "success",
+      data: result.doctors,
+      pagination: result.pagination,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Handler for GET /api/doctors/:id
+ * PATIENT-only lookup endpoint returning safe profile of single active doctor by UUID.
+ */
+export const getPublicDoctorByIdHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const id = req.params.id as string;
+    const doctor = await doctorService.getPublicDoctorById(id);
+
+    res.status(200).json({
+      status: "success",
+      data: doctor,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Handler for GET /api/doctors/:doctorId/slots?date=YYYY-MM-DD
+ * PATIENT-only endpoint returning generated appointment slots for a doctor on a given date.
+ */
+export const getDoctorSlotsHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const doctorId = req.params.doctorId as string;
+    const date = req.query.date as string;
+    const result = await doctorService.getDoctorSlots(doctorId, date);
+
+    res.status(200).json({
+      status: "success",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

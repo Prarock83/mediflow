@@ -9,6 +9,10 @@ import {
   createDoctorAvailabilitySchema,
   updateDoctorAvailabilitySchema,
   availabilityIdParamSchema,
+  patientDoctorQuerySchema,
+  doctorIdParamSchema,
+  doctorIdSlotsParamSchema,
+  doctorSlotsQuerySchema,
 } from "../schemas/doctor.schema";
 import {
   createDoctorProfileHandler,
@@ -18,22 +22,56 @@ import {
   getDoctorAvailabilitiesHandler,
   updateDoctorAvailabilityHandler,
   deleteDoctorAvailabilityHandler,
+  getPublicDoctorsHandler,
+  getPublicDoctorByIdHandler,
+  getDoctorSlotsHandler,
 } from "../controllers/doctor.controller";
 
 const router = Router();
 
-// Apply requireAuth and requireRole(UserRole.DOCTOR) for all doctor routes
-router.use(requireAuth, requireRole(UserRole.DOCTOR));
+// ==========================================
+// PATIENT-only Doctor Discovery Routes
+// ==========================================
+router.get(
+  "/",
+  requireAuth,
+  requireRole(UserRole.PATIENT),
+  validate(patientDoctorQuerySchema, "query"),
+  getPublicDoctorsHandler
+);
 
-// Doctor Profile routes
+// ==========================================
+// PATIENT-only Doctor Slot Generation Route
+// ==========================================
+router.get(
+  "/:doctorId/slots",
+  requireAuth,
+  requireRole(UserRole.PATIENT),
+  validate(doctorIdSlotsParamSchema, "params"),
+  validate(doctorSlotsQuerySchema, "query"),
+  getDoctorSlotsHandler
+);
+
+// ==========================================
+// DOCTOR-only Self Management Routes
+// ==========================================
 router.post(
   "/profile",
+  requireAuth,
+  requireRole(UserRole.DOCTOR),
   validate(createDoctorProfileSchema, "body"),
   createDoctorProfileHandler
 );
-router.get("/me", getDoctorProfileHandler);
+router.get(
+  "/me",
+  requireAuth,
+  requireRole(UserRole.DOCTOR),
+  getDoctorProfileHandler
+);
 router.put(
   "/me",
+  requireAuth,
+  requireRole(UserRole.DOCTOR),
   validate(updateDoctorProfileSchema, "body"),
   updateDoctorProfileHandler
 );
@@ -41,20 +79,43 @@ router.put(
 // Doctor Availability routes
 router.post(
   "/availability",
+  requireAuth,
+  requireRole(UserRole.DOCTOR),
   validate(createDoctorAvailabilitySchema, "body"),
   createDoctorAvailabilityHandler
 );
-router.get("/availability", getDoctorAvailabilitiesHandler);
+router.get(
+  "/availability",
+  requireAuth,
+  requireRole(UserRole.DOCTOR),
+  getDoctorAvailabilitiesHandler
+);
 router.put(
   "/availability/:id",
+  requireAuth,
+  requireRole(UserRole.DOCTOR),
   validate(availabilityIdParamSchema, "params"),
   validate(updateDoctorAvailabilitySchema, "body"),
   updateDoctorAvailabilityHandler
 );
 router.delete(
   "/availability/:id",
+  requireAuth,
+  requireRole(UserRole.DOCTOR),
   validate(availabilityIdParamSchema, "params"),
   deleteDoctorAvailabilityHandler
+);
+
+// ==========================================
+// PATIENT-only Doctor Lookup by UUID
+// (Registered after static subroutes like /me or /availability)
+// ==========================================
+router.get(
+  "/:id",
+  requireAuth,
+  requireRole(UserRole.PATIENT),
+  validate(doctorIdParamSchema, "params"),
+  getPublicDoctorByIdHandler
 );
 
 export default router;
