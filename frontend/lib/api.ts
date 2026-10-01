@@ -137,6 +137,42 @@ export async function fetchDoctorById(
   return data.data;
 }
 
+export interface DoctorSlotItem {
+  startTime: string;
+  endTime: string;
+  available: boolean;
+}
+
+export interface DoctorSlotsResponse {
+  doctorId: string;
+  date: string;
+  slots: DoctorSlotItem[];
+}
+
+export async function fetchDoctorSlots(
+  doctorId: string,
+  date: string,
+  token?: string
+): Promise<DoctorSlotsResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/doctors/${doctorId}/slots?date=${date}`,
+    {
+      headers: getAuthHeaders(token),
+    }
+  );
+
+  if (!response.ok) {
+    const errBody = await response.json().catch(() => null);
+    throw new Error(
+      errBody?.message || `Failed to fetch slots for date ${date}: ${response.status}`
+    );
+  }
+
+  const data = await response.json();
+  return data.data;
+}
+
+
 export async function fetchRecommendedDoctors(
   limit = 3,
   token?: string
