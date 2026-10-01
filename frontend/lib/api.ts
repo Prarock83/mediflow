@@ -245,6 +245,14 @@ export interface CreateAppointmentPayload {
   reason?: string;
 }
 
+export interface SavePatientProfilePayload {
+  dateOfBirth?: string | null;
+  gender?: string | null;
+  bloodGroup?: string | null;
+  address?: string | null;
+  emergencyContact?: string | null;
+}
+
 export async function fetchPatientProfile(
   token?: string
 ): Promise<PatientProfileData> {
@@ -259,6 +267,51 @@ export async function fetchPatientProfile(
   const data = await response.json();
   return data.data;
 }
+
+export async function updatePatientProfile(
+  payload: SavePatientProfilePayload,
+  token?: string
+): Promise<PatientProfileData> {
+  const response = await fetch(`${API_BASE_URL}/patients/me`, {
+    method: "PUT",
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to update patient profile: ${response.status}`,
+      response.status
+    );
+  }
+
+  return data.data;
+}
+
+export async function createPatientProfile(
+  payload: SavePatientProfilePayload,
+  token?: string
+): Promise<PatientProfileData> {
+  const response = await fetch(`${API_BASE_URL}/patients/profile`, {
+    method: "POST",
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to create patient profile: ${response.status}`,
+      response.status
+    );
+  }
+
+  return data.data;
+}
+
 
 export async function createAppointment(
   payload: CreateAppointmentPayload,
