@@ -373,5 +373,87 @@ export async function fetchPatientMedicalRecordById(
   return data.data;
 }
 
+export interface PrescriptionItem {
+  id: string;
+  prescriptionId: string;
+  medicationName: string;
+  dosage: string;
+  frequency: string;
+  duration: string;
+}
+
+export interface PrescriptionDoctorUser {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber?: string;
+}
+
+export interface PrescriptionDoctorSpecialization {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+export interface PrescriptionDoctor {
+  id: string;
+  userId: string;
+  licenseNumber?: string;
+  experienceYears?: number;
+  user?: PrescriptionDoctorUser;
+  specialization?: PrescriptionDoctorSpecialization;
+}
+
+export interface Prescription {
+  id: string;
+  consultationId: string;
+  doctorId: string;
+  patientId: string;
+  instructions?: string | null;
+  createdAt: string;
+  updatedAt?: string;
+  items: PrescriptionItem[];
+  doctor?: PrescriptionDoctor;
+}
+
+export async function fetchPatientPrescriptions(
+  token?: string
+): Promise<Prescription[]> {
+  const response = await fetch(`${API_BASE_URL}/prescriptions/my`, {
+    headers: getAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    throw new ApiError(
+      `Failed to fetch prescriptions: ${response.status}`,
+      response.status
+    );
+  }
+
+  const data = await response.json();
+  return data.data || [];
+}
+
+export async function fetchPatientPrescriptionById(
+  id: string,
+  token?: string
+): Promise<Prescription> {
+  const response = await fetch(`${API_BASE_URL}/prescriptions/${id}`, {
+    headers: getAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    throw new ApiError(
+      `Failed to fetch prescription: ${response.status}`,
+      response.status
+    );
+  }
+
+  const data = await response.json();
+  return data.data;
+}
+
+
 
 
